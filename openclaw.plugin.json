@@ -1,0 +1,39 @@
+{
+  "id": "openclaw-max",
+  "name": "Max Messenger",
+  "version": "0.1.0",
+  "description": "Modern OpenClaw channel plugin for Max Messenger Bot API.",
+  "author": "Techno Imp",
+  "activation": { "onStartup": false },
+  "extensions": ["./dist/index.js"],
+  "channels": ["max"],
+  "channelEnvVars": { "max": ["MAX_BOT_TOKEN"] },
+  "contracts": {
+    "tools": [
+      "max_get_me", "max_set_commands", "max_get_chats", "max_get_chat", "max_get_chat_by_link",
+      "max_edit_chat", "max_get_membership", "max_get_admins", "max_get_members", "max_add_members",
+      "max_remove_member", "max_leave_chat", "max_get_messages", "max_get_message", "max_send_message",
+      "max_edit_message", "max_delete_message", "max_pin_message", "max_unpin_message", "max_get_pinned_message",
+      "max_send_action", "max_answer_callback", "max_upload_file"
+    ]
+  },
+  "configSchema": { "type": "object", "additionalProperties": false, "properties": {} },
+  "channelConfigs": {
+    "max": {
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "token": { "type": "string", "description": "Token or ${MAX_BOT_TOKEN}." },
+          "dmPolicy": { "type": "string", "enum": ["open", "allowlist", "pairing", "block"] },
+          "allowFrom": { "type": "array", "items": { "type": ["string", "number"] } },
+          "accounts": { "type": "object", "additionalProperties": true },
+          "polling": { "type": "object", "additionalProperties": true },
+          "textChunkLimit": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  }
+}

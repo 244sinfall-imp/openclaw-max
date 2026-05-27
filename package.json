@@ -1,0 +1,68 @@
+{
+  "name": "openclaw-max",
+  "version": "0.1.0",
+  "description": "Modern OpenClaw channel plugin for Max Messenger Bot API",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "openclaw.plugin.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc --noEmit false",
+    "check": "tsc --noEmit false && node --check dist/index.js",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "openclaw",
+    "plugin",
+    "channel",
+    "max",
+    "max-messenger",
+    "bot-api"
+  ],
+  "license": "MIT",
+  "author": "Techno Imp <imp@244sinfall.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/244sinfall-imp/openclaw-max.git"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.5.22"
+  },
+  "dependencies": {
+    "@maxhub/max-bot-api": "^0.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "openclaw": "2026.5.22",
+    "typebox": "^1.0.58",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "openclaw": {
+    "extensions": [
+      "./dist/index.js"
+    ],
+    "channel": {
+      "id": "max",
+      "label": "Max Messenger",
+      "selectionLabel": "Max Messenger (Bot API)",
+      "docsPath": "/channels/max",
+      "docsLabel": "max",
+      "blurb": "Modern Max Messenger Bot API integration",
+      "order": 91,
+      "aliases": [
+        "max-messenger",
+        "max.ru"
+      ]
+    },
+    "install": {
+      "localPath": "extensions/max",
+      "defaultChoice": "local"
+    }
+  }
+}
