@@ -1,9 +1,10 @@
 import { createChatChannelPlugin } from "openclaw/plugin-sdk/core";
 import { createAccountStatusSink } from "openclaw/plugin-sdk/channel-runtime";
-import { CHANNEL_ID, listAccountIds, normalizedAllowEntry, resolveAccount, tokenFor, type MaxAccountConfig } from "./config.js";
-import { getBot } from "./max-api.js";
+import { CHANNEL_ID, listAccountIds, normalizedAllowEntry, resolveAccount, resolveEnvToken, type MaxAccountConfig } from "./config.js";
+import { getBotResolved } from "./max-api.js";
 import { outbound } from "./outbound.js";
 import { startPolling, stopPolling } from "./polling.js";
+import { resolvePluginRuntime } from "./runtime.js";
 
 export const maxChannel: any = createChatChannelPlugin({
   base: {
@@ -25,7 +26,7 @@ export const maxChannel: any = createChatChannelPlugin({
       listAccountIds,
       resolveAccount,
       isEnabled: (account) => account.enabled,
-      isConfigured: (account) => Boolean(tokenFor(account)),
+      isConfigured: (account) => Boolean(resolveEnvToken(account.token) || account.token),
       unconfiguredReason: () => "Set channels.max.token or MAX_BOT_TOKEN.",
       resolveAllowFrom: ({ cfg, accountId }) => resolveAccount(cfg, accountId).allowFrom,
       formatAllowFrom: ({ allowFrom }) => allowFrom.map((v) => String(v)),
@@ -37,24 +38,24 @@ export const maxChannel: any = createChatChannelPlugin({
         running: true,
         dmPolicy: account.dmPolicy,
         allowFrom: (account.allowFrom ?? []).map(String),
-        tokenSource: account.token?.startsWith("${") ? account.token : account.token ? "config" : "missing",
+        tokenSource: typeof account.token === "string" && account.token.startsWith("${") ? account.token : account.token ? "config" : "missing",
       }),
     },
     status: {
-      probeAccount: async ({ account }: { account: MaxAccountConfig }) => {
-        const { api } = getBot(account);
+      probeAccount: async ({ account, cfg }: { account: MaxAccountConfig; cfg: any }) => {
+        const { api } = await getBotResolved(cfg, account);
         return api.getMyInfo();
       },
       formatCapabilitiesProbe: ({ probe }: { probe: unknown }) => [{ text: `Bot API reachable: ${JSON.stringify(probe).slice(0, 120)}`, tone: "success" as const }],
     },
     gateway: {
       startAccount: async (ctx) => {
-        if (!ctx.channelRuntime) throw new Error("Max plugin requires channelRuntime from OpenClaw gateway");
+        const pluginRuntime = resolvePluginRuntime(ctx.channelRuntime);
         const setStatus = createAccountStatusSink({ accountId: ctx.account.accountId, setStatus: ctx.setStatus });
         setStatus({ running: true, connected: false, lastStartAt: Date.now(), healthState: "starting" });
         try {
           setStatus({ connected: true, lastConnectedAt: Date.now(), healthState: "ok" });
-          await startPolling({ cfg: ctx.cfg, account: ctx.account, runtime: ctx.channelRuntime as never, log: ctx.log, abortSignal: ctx.abortSignal });
+          await startPolling({ cfg: ctx.cfg, account: ctx.account, runtime: pluginRuntime, log: ctx.log, abortSignal: ctx.abortSignal });
         } finally {
           setStatus({ running: false, connected: false, lastStopAt: Date.now(), healthState: "stopped" });
         }
@@ -83,7 +84,7 @@ export const maxChannel: any = createChatChannelPlugin({
       normalizeAllowEntry: normalizedAllowEntry,
       notify: async ({ id, message, cfg, accountId }) => {
         const account = resolveAccount(cfg, accountId);
-        const { api } = getBot(account);
+        const { api } = await getBotResolved(cfg, account);
         await api.sendMessageToUser(Number(normalizedAllowEntry(id)), message);
       },
     },

@@ -1,4 +1,7 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
+import type { SecretInput } from "openclaw/plugin-sdk/secret-input-runtime";
+import { isSecretRef } from "openclaw/plugin-sdk/core";
+import { resolveConfiguredSecretInputString } from "openclaw/plugin-sdk/config-runtime";
 
 export const CHANNEL_ID = "max";
 export const DEFAULT_ACCOUNT_ID = "default";
@@ -6,7 +9,7 @@ export const DEFAULT_ACCOUNT_ID = "default";
 export type MaxAccountConfig = {
   accountId: string;
   enabled: boolean;
-  token?: string;
+  token?: SecretInput;
   dmPolicy?: "open" | "allowlist" | "pairing" | "block";
   allowFrom?: Array<string | number>;
   polling?: { intervalMs?: number; limit?: number; marker?: number | null };
@@ -15,7 +18,7 @@ export type MaxAccountConfig = {
 
 export type MaxConfig = {
   enabled?: boolean;
-  token?: string;
+  token?: SecretInput;
   dmPolicy?: MaxAccountConfig["dmPolicy"];
   allowFrom?: Array<string | number>;
   polling?: MaxAccountConfig["polling"];
@@ -23,10 +26,25 @@ export type MaxConfig = {
   accounts?: Record<string, Omit<Partial<MaxAccountConfig>, "accountId">>;
 };
 
-export function resolveEnvToken(raw?: string): string | undefined {
+export function resolveEnvToken(raw?: SecretInput): string | undefined {
   if (!raw) return undefined;
+  if (isSecretRef(raw)) {
+    if (raw.source === "env") return process.env[raw.id];
+    return undefined;
+  }
   const match = raw.match(/^\$\{([A-Z0-9_]+)\}$/i);
   return match ? process.env[match[1]] : raw;
+}
+
+export async function resolveToken(cfg: OpenClawConfig, account: MaxAccountConfig): Promise<string | undefined> {
+  const resolved = await resolveConfiguredSecretInputString({
+    config: cfg,
+    env: process.env,
+    value: account.token,
+    path: `channels.max.accounts.${account.accountId}.token`,
+    unresolvedReasonStyle: "detailed",
+  });
+  return resolved.value ?? resolveEnvToken(account.token);
 }
 
 export function maxConfig(cfg: OpenClawConfig): MaxConfig {

@@ -1,6 +1,7 @@
 import { Bot } from "@maxhub/max-bot-api";
 import type { MaxAccountConfig } from "./config.js";
-import { tokenFor } from "./config.js";
+import { resolveToken, tokenFor } from "./config.js";
+import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
 
 export type MaxApi = InstanceType<typeof Bot>["api"];
 
@@ -8,7 +9,16 @@ type Cached = { bot: Bot; api: MaxApi };
 const cache = new Map<string, Cached>();
 
 export function getBot(account: MaxAccountConfig): Cached {
-  const token = tokenFor(account);
+  return getBotForToken(tokenFor(account));
+}
+
+export async function getBotResolved(cfg: OpenClawConfig, account: MaxAccountConfig): Promise<Cached> {
+  const token = await resolveToken(cfg, account);
+  if (!token) throw new Error(`Max account ${account.accountId} missing token`);
+  return getBotForToken(token);
+}
+
+function getBotForToken(token: string): Cached {
   let cached = cache.get(token);
   if (!cached) {
     const bot = new Bot(token);

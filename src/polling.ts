@@ -1,7 +1,7 @@
 import type { OpenClawConfig, PluginRuntime } from "openclaw/plugin-sdk/core";
 type ChannelLogSink = { info?: (msg: string) => void; warn?: (msg: string) => void; error?: (msg: string) => void; debug?: (msg: string) => void };
 import type { MaxAccountConfig } from "./config.js";
-import { getBot } from "./max-api.js";
+import { getBotResolved } from "./max-api.js";
 import { handleUpdate } from "./inbound.js";
 
 type Poller = { stop: () => void; marker?: number | null; running: boolean };
@@ -27,7 +27,7 @@ export async function startPolling(params: {
   const { cfg, account, runtime, log, abortSignal } = params;
   if (!account.enabled) return;
   stopPolling(account.accountId);
-  const { api } = getBot(account);
+  const { api } = await getBotResolved(cfg, account);
   const intervalMs = account.polling?.intervalMs ?? 1500;
   const limit = account.polling?.limit ?? 50;
   let marker = account.polling?.marker ?? undefined;
@@ -44,11 +44,12 @@ export async function startPolling(params: {
     }
     poller.running = true;
     try {
-      const res = await api.getUpdates(undefined, { marker, limit } as never);
+      const res = await api.getUpdates(["message_created", "bot_started"] as never, { marker, limit } as never);
       const updates = (res as { updates?: unknown[]; marker?: number | null })?.updates ?? [];
       const nextMarker = (res as { marker?: number | null })?.marker;
       if (nextMarker !== undefined && nextMarker !== null) marker = nextMarker;
       poller.marker = marker;
+      if (updates.length > 0) log?.info?.(`[${account.accountId}] Max received ${updates.length} update(s), marker=${String(marker)}`);
       for (const update of updates) {
         await handleUpdate({ cfg, account, runtime, log, update });
       }

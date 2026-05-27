@@ -2,7 +2,7 @@ import { Type } from "typebox";
 import type { OpenClawPluginApi, OpenClawPluginToolContext, OpenClawConfig } from "openclaw/plugin-sdk/core";
 import { defineToolPlugin } from "openclaw/plugin-sdk/tool-plugin";
 import { resolveAccount } from "./config.js";
-import { getBot, sendText, toIntId } from "./max-api.js";
+import { getBotResolved, sendText, toIntId } from "./max-api.js";
 
 type Params = Record<string, unknown>;
 function cfgOf(ctx: OpenClawPluginToolContext): OpenClawConfig { return (ctx.runtimeConfig ?? ctx.getRuntimeConfig?.() ?? ctx.config ?? {}) as OpenClawConfig; }
@@ -10,7 +10,7 @@ function accountId(p: Params): string | undefined { return typeof p.accountId ==
 function str(p: Params, key: string): string { const v = p[key]; if (typeof v !== "string" && typeof v !== "number") throw new Error(`${key} is required`); return String(v); }
 function optStr(p: Params, key: string): string | undefined { const v = p[key]; return typeof v === "string" || typeof v === "number" ? String(v) : undefined; }
 function num(p: Params, key: string): number { return toIntId(str(p, key)); }
-function apiFor(ctx: OpenClawPluginToolContext, p: Params) { return getBot(resolveAccount(cfgOf(ctx), accountId(p))).api as any; }
+async function apiFor(ctx: OpenClawPluginToolContext, p: Params) { const cfg = cfgOf(ctx); return (await getBotResolved(cfg, resolveAccount(cfg, accountId(p)))).api as any; }
 
 const accountIdParam = Type.Optional(Type.String({ description: "Max account id" }));
 const idParam = Type.Union([Type.String(), Type.Number()]);
@@ -32,7 +32,7 @@ export const maxToolsPlugin = defineToolPlugin({
         description,
         parameters: Type.Object({ ...base, ...props }),
         optional: false,
-        execute: async (_toolCallId: string, params: unknown) => fn(apiFor(toolContext, params as Params), params as Params, toolContext),
+        execute: async (_toolCallId: string, params: unknown) => fn(await apiFor(toolContext, params as Params), params as Params, toolContext),
       } as any),
     });
     return [
