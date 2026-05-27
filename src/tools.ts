@@ -5,6 +5,14 @@ import { resolveAccount } from "./config.js";
 import { getBotResolved, sendText, toIntId } from "./max-api.js";
 
 type Params = Record<string, unknown>;
+function toolResult(value: unknown) {
+  return {
+    content: [{
+      type: "text",
+      text: typeof value === "string" ? value : JSON.stringify(value, null, 2),
+    }],
+  };
+}
 function cfgOf(ctx: OpenClawPluginToolContext): OpenClawConfig { return (ctx.runtimeConfig ?? ctx.getRuntimeConfig?.() ?? ctx.config ?? {}) as OpenClawConfig; }
 function accountId(p: Params): string | undefined { return typeof p.accountId === "string" ? p.accountId : undefined; }
 function str(p: Params, key: string): string { const v = p[key]; if (typeof v !== "string" && typeof v !== "number") throw new Error(`${key} is required`); return String(v); }
@@ -32,7 +40,7 @@ export const maxToolsPlugin = defineToolPlugin({
         description,
         parameters: Type.Object({ ...base, ...props }),
         optional: false,
-        execute: async (_toolCallId: string, params: unknown) => fn(await apiFor(toolContext, params as Params), params as Params, toolContext),
+        execute: async (_toolCallId: string, params: unknown) => toolResult(await fn(await apiFor(toolContext, params as Params), params as Params, toolContext)),
       } as any),
     });
     return [
